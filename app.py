@@ -8,24 +8,36 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 import streamlit as st
 
-# Download NLTK assets
-nltk.download('punkt')
-nltk.download('punkt_tab')
+# --- 0. PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="Mshirika - Stima SACCO Assistant",
+    page_icon="🤖",
+    layout="centered"
+)
+
+st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
+st.caption("Your 24/7 assistant for Stima SACCO membership, loans, dividends, and mobile banking.")
+
+# --- 1. CACHED ASSETS & PREPROCESSING ---
+@st.cache_resource
+def download_nltk_data():
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+
+download_nltk_data()
 stemmer = LancasterStemmer()
 
-# Streamlit Page Config
-st.set_page_config(page_title="Mshirika - Stima SACCO Assistant", page_icon="🤖")
-st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
-st.caption("Ask questions about membership, loans, dividends, and mobile banking.")
-
-# --- 1. KNOWLEDGE BASE DATASET ---
+# --- 2. KNOWLEDGE BASE DATASET ---
 intents_data = {
   "intents": [
     {
       "tag": "greeting",
       "patterns": ["Hi", "Hello", "Habari", "How are you", "Is anyone there?", "Good day", "Mambo"],
       "responses": [
-        "Hello! I'm Mshirika, your Stima SACCO assistant. I can help with membership, loans, accounts, dividends, and mobile banking questions. How can I help you today?"
+        "Hello! I'm Mshirika, your Stima SACCO virtual assistant. I can help with membership, loans, accounts, dividends, and mobile banking questions. How can I assist you today?"
       ]
     },
     {
@@ -36,50 +48,129 @@ intents_data = {
       ]
     },
     {
+      "tag": "name",
+      "patterns": ["what is your name", "who are you", "what should I call you"],
+      "responses": [
+        "I'm Mshirika, Stima SACCO's virtual assistant, here to answer common member questions and connect you to customer care when needed."
+      ]
+    },
+    {
       "tag": "membership_requirements",
       "patterns": [
         "how do I become a member", "how do I join Stima Sacco", "what do I need to join",
         "can I join as diaspora", "documents needed for membership", "how to register as a member"
       ],
       "responses": [
-        "To join Stima SACCO you'll need: (1) a completed application form, (2) National ID/Passport copy, (3) KSh 25,000 Share Capital (payable in installments), and (4) monthly Alpha Deposits of at least KSh 1,000. Open to individuals, chamas, corporates, and diaspora (diasporabanking@stima-sacco.com)."
+        "To join Stima SACCO you'll need: (1) a completed membership application form, (2) a copy of your National ID or valid passport, (3) a minimum Share Capital contribution of KSh 25,000 (payable in installments), and (4) monthly Alpha Deposits of at least KSh 1,000 to keep your account active. Open to individuals, chamas, corporates, and diaspora. Download the form: https://www.stima-sacco.com/downloads/loan-application-forms/ or email diasporabanking@stima-sacco.com for diaspora queries."
       ]
     },
     {
       "tag": "account_types",
       "patterns": [
         "what is Share Capital", "what is Alpha Deposits", "what is a Prime account",
-        "what is FOSA account", "difference between share capital and alpha deposits"
+        "what is FOSA account", "difference between share capital and alpha deposits", "what accounts do you offer"
       ],
       "responses": [
-        "Core accounts: (1) Share Capital (equity/co-ownership stake - non-withdrawable, transferable upon exit), (2) Alpha Deposits (monthly savings used as loan collateral - refunded upon exit), and (3) Prime/FOSA Account (transactional account for salary, ATMs, and dividend payouts)."
+        "Stima SACCO has three core account types:\n"
+        "1. **Share Capital Account:** Equity/co-ownership stake - non-withdrawable, but transferable/sellable to another member upon exit.\n"
+        "2. **Alpha Deposits Account:** Monthly savings used as loan collateral - refunded in full upon exiting and clearing liabilities.\n"
+        "3. **Prime/FOSA Account:** Transactional account for salaries, ATM withdrawals, over-the-counter transactions, and receiving dividends."
       ]
     },
     {
-      "tag": "paybill_deposits",
+      "tag": "loan_eligibility",
       "patterns": [
-        "how do I deposit money", "paybill number", "how do I pay my monthly deposit via mpesa", "how do I top up my share capital"
+        "am I eligible for a loan", "how long before I can borrow", "how many months before I can get a loan",
+        "loan requirements", "can I apply for a loan now"
       ],
       "responses": [
-        "Use Paybill 823244. For Alpha Deposits: 802 + 7-digit member number + 00. For Share Capital: 800 + 7-digit member number + 00. For Prime (FOSA): 801 + 7-digit member number + 00."
+        "You need to be a member for at least 3 months (individuals) or 6 months (corporate members) and meet product-specific requirements (active deposits, payslips/bank statements, ID copy, and KRA PIN). View products: https://www.stima-sacco.com/credit-products/"
+      ]
+    },
+    {
+      "tag": "loan_multiplier_security",
+      "patterns": [
+        "how much can I borrow", "can I borrow 4 times my deposits", "loan multiplier",
+        "do I need a guarantor for a big loan", "why do I need security for my loan",
+        "can I use land as loan security", "can I use my car logbook for a loan"
+      ],
+      "responses": [
+        "You can generally borrow up to 3–4 times your Alpha Deposits, subject to security (guarantors, self-guarantee, land title deeds, motor vehicle logbooks, or fixed deposits). The SACCO determines final eligibility based on your risk profile."
+      ]
+    },
+    {
+      "tag": "loan_products",
+      "patterns": [
+        "what loan products do you have", "what types of loans are available", "do you have business loans",
+        "do you have mortgage loans", "do you have Islamic finance loans", "short term loan options", "emergency loan"
+      ],
+      "responses": [
+        "Stima SACCO offers Short-term loans (Salary Advance, Emergency, School fees), Long-term loans (Normal, Super, Flex, Mwangaza), Business/Asset Finance, Mortgages (KMRC), and Sharia-compliant options (Mudarabah, Musharaka). Download forms: https://www.stima-sacco.com/downloads/loan-application-forms/"
+      ]
+    },
+    {
+      "tag": "dividends",
+      "patterns": ["when are dividends paid", "how much dividends will I get", "when is the AGM", "interest rebate"],
+      "responses": [
+        "Dividends (on Share Capital) and interest rebates (on Alpha Deposits) are paid annually after the Annual General Meeting (AGM) - typically late February to March."
+      ]
+    },
+    {
+      "tag": "dividends_discounting",
+      "patterns": ["can I get an advance on my dividends", "dividends discounting", "advance against dividends"],
+      "responses": [
+        "Yes, you can access up to 50% of your estimated dividends/rebates in advance based on the prior year's payout at an interest rate of 4% per month. Apply via M-Pawa/M-Stima, internet banking, or your nearest branch."
       ]
     },
     {
       "tag": "mobile_banking",
-      "patterns": ["how do I check my balance", "how do I use M-Stima", "USSD code", "mobile app"],
+      "patterns": ["how do I check my balance", "how do I use M-Stima", "USSD code", "mobile app", "how do I register for M-Stima"],
       "responses": [
-        "Dial *492# for USSD banking or use the M-Stima app (Android/iOS). For support, contact WhatsApp: 0703024001 or email customercare@stima-sacco.com."
+        "Dial ***492#** for USSD banking or use the **M-Stima App** (Android & iOS). For setup assistance, contact WhatsApp: 0703024001 or customercare@stima-sacco.com."
+      ]
+    },
+    {
+      "tag": "paybill_deposits",
+      "patterns": ["how do I deposit money", "paybill number", "how do I pay my monthly deposit via mpesa", "how do I top up my share capital"],
+      "responses": [
+        "Use **M-PESA Paybill 823244**:\n"
+        "* **Alpha Deposits:** `802` + `7-digit Member Number` + `00`\n"
+        "* **Share Capital:** `800` + `7-digit Member Number` + `00`\n"
+        "* **Prime/FOSA Account:** `801` + `7-digit Member Number` + `00`"
+      ]
+    },
+    {
+      "tag": "exit_withdrawal",
+      "patterns": ["how do I leave Stima Sacco", "how do I withdraw my membership", "can I close my account"],
+      "responses": [
+        "To exit, submit a formal 60-day written notice. Alpha Deposits are refunded in full after settling outstanding liabilities. Share Capital is non-withdrawable but can be transferred or sold to an active member."
+      ]
+    },
+    {
+      "tag": "guarantor_rules",
+      "patterns": ["can I withdraw if I guaranteed someone", "I am a guarantor can I leave", "guarantor liability"],
+      "responses": [
+        "You cannot withdraw or close your account while actively guaranteeing another member's loan unless the borrower clears the balance or replaces you with an eligible guarantor."
+      ]
+    },
+    {
+      "tag": "branch_locator",
+      "patterns": ["where is your nearest branch", "branches", "office locations", "where is your head office"],
+      "responses": [
+        "Head Office: Stima Sacco Plaza, Mushembi Road, Parklands, Nairobi. Other branches: Nairobi CBD (Kawi Centre), Mombasa, Kisumu, Nakuru, Olkaria, Eldoret, and Embu. Full locator: https://www.stima-sacco.com/branches/"
       ]
     },
     {
       "tag": "complaint_escalation",
-      "patterns": ["I want to file a complaint", "talk to a human", "connect me to customer care"],
-      "responses": ["Let me connect you with Customer Care: customercare@stima-sacco.com | 0703024000 / 0703024024."]
+      "patterns": ["I want to file a complaint", "I have an issue with my account", "talk to a human", "connect me to customer care"],
+      "responses": [
+        "I'm escalating this to Customer Care: Email customercare@stima-sacco.com | Phone: 0703024000 / 0703024024 | WhatsApp: 0703024001."
+      ]
     }
   ]
 }
 
-# --- 2. TRAIN MODEL (CACHED FOR PERFORMANCE) ---
+# --- 3. MODEL TRAINING & CACHING ---
 @st.cache_resource
 def build_and_train_model():
     words = []
@@ -127,13 +218,13 @@ def build_and_train_model():
     ])
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(training, output, epochs=300, batch_size=8, verbose=0)
+    model.fit(training, output, epochs=250, batch_size=8, verbose=0)
     
     return model, words, labels
 
 model, words, labels = build_and_train_model()
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 4. HELPER FUNCTIONS ---
 def bag_of_words(s, words):
     bag = [0 for _ in range(len(words))]
     s_words = nltk.word_tokenize(s)
@@ -146,40 +237,56 @@ def bag_of_words(s, words):
 
 def generate_escalation_link(user_query):
     recipient = "customercare@stima-sacco.com"
-    subject = "Escalated Member Inquiry - Stima SACCO Support"
-    body = f"Dear Stima SACCO Customer Care Team,\n\nI need assistance regarding: \"{user_query}\"\n\nKind regards,"
-    return f"mailto:{recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}", recipient
+    subject = "Escalated Member Inquiry - Mshirika Virtual Assistant"
+    body = (
+        f"Dear Stima SACCO Customer Care Team,\n\n"
+        f"I need support with the following query:\n\n"
+        f"\"{user_query}\"\n\n"
+        f"Member Details:\n"
+        f"Name: \n"
+        f"Member No: \n"
+        f"Phone: \n\n"
+        f"Kind regards,"
+    )
+    mailto_url = f"mailto:{recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
+    return mailto_url, recipient
 
-# --- 4. CHAT INTERFACE ---
+# --- 5. STREAMLIT CHAT INTERFACE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Display conversation history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("How can I help you with Stima SACCO today?"):
+# Process new user input
+if prompt := st.chat_input("Ask about deposits, loans, dividends, USSD..."):
+    # Display user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # Predict intent
     results = model.predict(bag_of_words(prompt, words), verbose=0)[0]
     results_index = np.argmax(results)
     tag = labels[results_index]
     confidence = results[results_index]
 
-    if confidence > 0.70 and tag not in ["fallback", "complaint_escalation"]:
+    # Confidence threshold evaluation
+    if confidence > 0.65 and tag not in ["complaint_escalation"]:
         for tg in intents_data["intents"]:
             if tg['tag'] == tag:
                 bot_reply = random.choice(tg['responses'])
     else:
         mailto_link, email_addr = generate_escalation_link(prompt)
         bot_reply = (
-            f"I am unable to fully process your query right now. Let's escalate this to our Customer Care team.\n\n"
+            f"I couldn't confidently process your request. I can escalate this directly to our Customer Support team.\n\n"
             f"👉 **Direct Email:** `{email_addr}`\n\n"
-            f"👉 **[Click here to send pre-filled email]({mailto_link})**"
+            f"👉 **[Click here to open pre-filled email]({mailto_link})**"
         )
 
+    # Display bot response
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
