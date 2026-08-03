@@ -1,4 +1,4 @@
-nltk
-numpy
-tensorflow
 streamlit
+nltk
+numpy<2.0.0
+tensorflow-cpu
