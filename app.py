@@ -3,9 +3,7 @@ import urllib.parse
 import numpy as np
 import nltk
 from nltk.stem import LancasterStemmer
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from sklearn.neural_network import MLPClassifier
 import streamlit as st
 
 # --- 0. PAGE CONFIGURATION ---
@@ -18,7 +16,7 @@ st.set_page_config(
 st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
 st.caption("Your 24/7 assistant for Stima SACCO membership, loans, dividends, and mobile banking.")
 
-# --- 1. CACHED ASSETS & PREPROCESSING ---
+# --- 1. CACHED NLTK ASSETS ---
 @st.cache_resource
 def download_nltk_data():
     try:
@@ -194,7 +192,6 @@ def build_and_train_model():
 
     training = []
     output = []
-    out_empty = [0 for _ in range(len(labels))]
 
     for x, doc in enumerate(docs_x):
         bag = []
@@ -202,23 +199,15 @@ def build_and_train_model():
         for w in words:
             bag.append(1 if w in wrds else 0)
 
-        output_row = list(out_empty)
-        output_row[labels.index(docs_y[x])] = 1
         training.append(bag)
-        output.append(output_row)
+        output.append(docs_y[x])
 
     training = np.array(training)
     output = np.array(output)
 
-    model = Sequential([
-        Dense(32, input_shape=(len(training[0]),), activation='relu'),
-        Dense(16, activation='relu'),
-        Dropout(0.2),
-        Dense(len(output[0]), activation='softmax')
-    ])
-
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(training, output, epochs=250, batch_size=8, verbose=0)
+    # Neural Network (MLP) Classifier via Scikit-Learn
+    model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=500, random_state=42)
+    model.fit(training, output)
     
     return model, words, labels
 
@@ -267,14 +256,14 @@ if prompt := st.chat_input("Ask about deposits, loans, dividends, USSD..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Predict intent
-    results = model.predict(bag_of_words(prompt, words), verbose=0)[0]
-    results_index = np.argmax(results)
-    tag = labels[results_index]
-    confidence = results[results_index]
+    # Predict intent & probability
+    probs = model.predict_proba(bag_of_words(prompt, words))[0]
+    max_idx = np.argmax(probs)
+    tag = model.classes_[max_idx]
+    confidence = probs[max_idx]
 
     # Confidence threshold evaluation
-    if confidence > 0.65 and tag not in ["complaint_escalation"]:
+    if confidence > 0.40 and tag not in ["complaint_escalation"]:
         for tg in intents_data["intents"]:
             if tg['tag'] == tag:
                 bot_reply = random.choice(tg['responses'])
