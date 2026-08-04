@@ -56,7 +56,8 @@ intents_data = {
       "tag": "membership_requirements",
       "patterns": [
         "how do I become a member", "how do I join Stima Sacco", "what do I need to join",
-        "can I join as diaspora", "documents needed for membership", "how to register as a member"
+        "can I join as diaspora", "documents needed for membership", "how to register as a member",
+        "advise on how to open an account", "open account", "membership requirements"
       ],
       "responses": [
         "To join Stima SACCO you'll need: (1) a completed membership application form, (2) a copy of your National ID or valid passport, (3) a minimum Share Capital contribution of KSh 25,000 (payable in installments), and (4) monthly Alpha Deposits of at least KSh 1,000 to keep your account active. Open to individuals, chamas, corporates, and diaspora. Download the form: https://www.stima-sacco.com/downloads/loan-application-forms/ or email diasporabanking@stima-sacco.com for diaspora queries."
@@ -100,7 +101,7 @@ intents_data = {
       "tag": "loan_products",
       "patterns": [
         "what loan products do you have", "what types of loans are available", "do you have business loans",
-        "do you have mortgage loans", "do you have Islamic finance loans", "short term loan options", "emergency loan"
+        "do you have mortgage loans", "do you have Islamic finance loans", "short term loan options", "emergency loan", "loans"
       ],
       "responses": [
         "Stima SACCO offers Short-term loans (Salary Advance, Emergency, School fees), Long-term loans (Normal, Super, Flex, Mwangaza), Business/Asset Finance, Mortgages (KMRC), and Sharia-compliant options (Mudarabah, Musharaka). Download forms: https://www.stima-sacco.com/downloads/loan-application-forms/"
@@ -108,7 +109,7 @@ intents_data = {
     },
     {
       "tag": "dividends",
-      "patterns": ["when are dividends paid", "how much dividends will I get", "when is the AGM", "interest rebate"],
+      "patterns": ["when are dividends paid", "how much dividends will I get", "when is the AGM", "interest rebate", "how are the dividends"],
       "responses": [
         "Dividends (on Share Capital) and interest rebates (on Alpha Deposits) are paid annually after the Annual General Meeting (AGM) - typically late February to March."
       ]
@@ -214,6 +215,18 @@ def build_and_train_model():
 model, words, labels = build_and_train_model()
 
 # --- 4. HELPER FUNCTIONS ---
+def clean_user_input(text):
+    """Strips leading conversational greetings if the message contains an actual query."""
+    greetings = ["hi", "hello", "hey", "habari", "mambo", "good day", "good morning", "good afternoon"]
+    words_list = text.strip().split()
+    
+    if len(words_list) > 1:
+        first_word = words_list[0].lower().strip(".,!?")
+        if first_word in greetings:
+            return " ".join(words_list[1:])
+            
+    return text
+
 def bag_of_words(s, words):
     bag = [0 for _ in range(len(words))]
     s_words = nltk.word_tokenize(s)
@@ -256,8 +269,11 @@ if prompt := st.chat_input("Ask about deposits, loans, dividends, USSD..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Predict intent & probability
-    probs = model.predict_proba(bag_of_words(prompt, words))[0]
+    # Clean leading greetings from multi-word prompts
+    cleaned_prompt = clean_user_input(prompt)
+
+    # Predict intent & probability on cleaned prompt
+    probs = model.predict_proba(bag_of_words(cleaned_prompt, words))[0]
     max_idx = np.argmax(probs)
     tag = model.classes_[max_idx]
     confidence = probs[max_idx]
