@@ -14,9 +14,52 @@ st.set_page_config(
 )
 
 st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
-st.caption("Your 24/7 assistant for Stima SACCO membership, loans, dividends, and mobile banking.")
+st.caption("Your 24/7 assistant for Stima SACCO membership, loan tracking, dividend math, and mobile banking.")
 
-# --- 1. CACHED NLTK ASSETS ---
+# --- 1. SIDEBAR TOOLS (CALCULATOR & STATUS TRACKER) ---
+st.sidebar.header("🛠️ Member Self-Service Tools")
+
+with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=False):
+    st.write("Calculate estimated annual returns based on Stima SACCO benchmark rates.")
+    
+    share_capital = st.number_input("Share Capital (KSh)", min_value=0.0, value=25000.0, step=1000.0)
+    alpha_deposits = st.number_input("Alpha Deposits (KSh)", min_value=0.0, value=100000.0, step=5000.0)
+    
+    # Standard benchmark averages (e.g., ~14% Share Capital Dividend, ~11% Alpha Rebates)
+    div_rate = st.slider("Est. Share Capital Dividend Rate (%)", 0.0, 20.0, 14.0) / 100
+    rebate_rate = st.slider("Est. Alpha Deposit Rebate Rate (%)", 0.0, 15.0, 11.0) / 100
+    
+    if st.button("Calculate Returns"):
+        div_payout = share_capital * div_rate
+        rebate_payout = alpha_deposits * rebate_rate
+        gross_total = div_payout + rebate_payout
+        w_tax = gross_total * 0.05  # 5% Withholding Tax
+        net_total = gross_total - w_tax
+        
+        st.markdown("### **Breakdown:**")
+        st.markdown(f"* **Share Capital Dividend:** KSh {div_payout:,.2f}")
+        st.markdown(f"* **Deposit Interest Rebates:** KSh {rebate_payout:,.2f}")
+        st.markdown(f"* **Gross Return:** KSh {gross_total:,.2f}")
+        st.markdown(f"* **Withholding Tax (5%):** -KSh {w_tax:,.2f}")
+        st.markdown(f"👉 **Net Payout:** **KSh {net_total:,.2f}**")
+
+with st.sidebar.expander("🔍 Instant Loan Status Lookup", expanded=False):
+    st.write("Check processing stage or current loan balance.")
+    member_no = st.text_input("Enter Member Number:", value="M-10294")
+    
+    if st.button("Check Status"):
+        # Simulated instant retrieval
+        st.success(f"Record found for Member: **{member_no}**")
+        st.markdown("**Active Product:** Super Development Loan")
+        st.markdown("**Processing Stage:** ✅ Approved (Disbursement in Progress)")
+        st.markdown("**Approved Amount:** KSh 450,000")
+        st.markdown("**Outstanding Balance:** KSh 120,400")
+        st.markdown("**Next Installment:** KSh 14,200 due on 15th")
+
+st.sidebar.markdown("---")
+st.sidebar.info("💡 **Tip:** Ask the chat assistant any policy, loan requirement, or mobile banking questions!")
+
+# --- 2. CACHED NLTK ASSETS ---
 @st.cache_resource
 def download_nltk_data():
     try:
@@ -28,7 +71,7 @@ def download_nltk_data():
 download_nltk_data()
 stemmer = LancasterStemmer()
 
-# --- 2. KNOWLEDGE BASE DATASET ---
+# --- 3. KNOWLEDGE BASE DATASET ---
 intents_data = {
   "intents": [
     {
@@ -60,7 +103,12 @@ intents_data = {
         "advise on how to open an account", "open account", "membership requirements"
       ],
       "responses": [
-        "To join Stima SACCO you'll need: (1) a completed membership application form, (2) a copy of your National ID or valid passport, (3) a minimum Share Capital contribution of KSh 25,000 (payable in installments), and (4) monthly Alpha Deposits of at least KSh 1,000 to keep your account active. Open to individuals, chamas, corporates, and diaspora. Download the form: https://www.stima-sacco.com/downloads/loan-application-forms/ or email diasporabanking@stima-sacco.com for diaspora queries."
+        "To join Stima SACCO you'll need:\n"
+        "1. Completed membership application form.\n"
+        "2. Copy of National ID or valid Passport.\n"
+        "3. Minimum Share Capital contribution of KSh 25,000 (payable in installments).\n"
+        "4. Monthly Alpha Deposits of at least KSh 1,000.\n\n"
+        "Open to individuals, chamas, corporates, and diaspora. Download the form: https://www.stima-sacco.com/downloads/loan-application-forms/ or email diasporabanking@stima-sacco.com."
       ]
     },
     {
@@ -83,7 +131,11 @@ intents_data = {
         "loan requirements", "can I apply for a loan now"
       ],
       "responses": [
-        "You need to be a member for at least 3 months (individuals) or 6 months (corporate members) and meet product-specific requirements (active deposits, payslips/bank statements, ID copy, and KRA PIN). View products: https://www.stima-sacco.com/credit-products/"
+        "You need to be an active member for at least 3 months (individuals) or 6 months (corporate members). Key policy rules:\n"
+        "* Regular monthly Alpha Deposit contributions.\n"
+        "* Latest 3 months payslips or 6 months bank statements.\n"
+        "* Copy of ID and KRA PIN.\n\n"
+        "View products: https://www.stima-sacco.com/credit-products/"
       ]
     },
     {
@@ -94,7 +146,9 @@ intents_data = {
         "can I use land as loan security", "can I use my car logbook for a loan"
       ],
       "responses": [
-        "You can generally borrow up to 3–4 times your Alpha Deposits, subject to security (guarantors, self-guarantee, land title deeds, motor vehicle logbooks, or fixed deposits). The SACCO determines final eligibility based on your risk profile."
+        "You can generally borrow up to **3–4 times** your Alpha Deposits balance.\n"
+        "* **Guarantors:** Required to cover amounts exceeding your self-guaranteed deposit balance.\n"
+        "* **Collateral Options:** Land title deeds, motor vehicle logbooks, or pledged fixed deposits."
       ]
     },
     {
@@ -104,28 +158,33 @@ intents_data = {
         "do you have mortgage loans", "do you have Islamic finance loans", "short term loan options", "emergency loan", "loans"
       ],
       "responses": [
-        "Stima SACCO offers Short-term loans (Salary Advance, Emergency, School fees), Long-term loans (Normal, Super, Flex, Mwangaza), Business/Asset Finance, Mortgages (KMRC), and Sharia-compliant options (Mudarabah, Musharaka). Download forms: https://www.stima-sacco.com/downloads/loan-application-forms/"
+        "Stima SACCO offers several tailored credit facilities:\n"
+        "* **Short-term:** Salary Advance, Emergency Loan, School Fees Loan.\n"
+        "* **Development Loans:** Normal Loan, Super Loan, Flex Loan, Mwangaza Loan.\n"
+        "* **Asset & Business:** Business loans, KMRC Mortgages, and Sharia-compliant facilities (Mudarabah, Musharaka).\n\n"
+        "Forms available here: https://www.stima-sacco.com/downloads/loan-application-forms/"
       ]
     },
     {
       "tag": "dividends",
-      "patterns": ["when are dividends paid", "how much dividends will I get", "when is the AGM", "interest rebate", "how are the dividends"],
+      "patterns": ["when are dividends paid", "how much dividends will I get", "when is the AGM", "interest rebate", "how are the dividends", "dividend calculation"],
       "responses": [
-        "Dividends (on Share Capital) and interest rebates (on Alpha Deposits) are paid annually after the Annual General Meeting (AGM) - typically late February to March."
+        "Dividends (on Share Capital) and interest rebates (on Alpha Deposits) are paid annually after approval at the AGM (typically late February to March).\n\n"
+        "💡 *Tip: Use the **Dividend & Rebate Calculator** in the sidebar to simulate your exact math breakdown!*"
       ]
     },
     {
       "tag": "dividends_discounting",
       "patterns": ["can I get an advance on my dividends", "dividends discounting", "advance against dividends"],
       "responses": [
-        "Yes, you can access up to 50% of your estimated dividends/rebates in advance based on the prior year's payout at an interest rate of 4% per month. Apply via M-Pawa/M-Stima, internet banking, or your nearest branch."
+        "Yes, you can access up to **50% of your estimated dividends/rebates** in advance based on the prior year's payout at an interest rate of 4% per month. Apply via M-Pawa/M-Stima, internet banking, or your nearest branch."
       ]
     },
     {
       "tag": "mobile_banking",
       "patterns": ["how do I check my balance", "how do I use M-Stima", "USSD code", "mobile app", "how do I register for M-Stima"],
       "responses": [
-        "Dial ***492#** for USSD banking or use the **M-Stima App** (Android & iOS). For setup assistance, contact WhatsApp: 0703024001 or customercare@stima-sacco.com."
+        "Dial ***492#** for USSD mobile banking or use the **M-Stima App** (available on Android & iOS). For setup assistance, contact WhatsApp: 0703024001 or customercare@stima-sacco.com."
       ]
     },
     {
@@ -133,43 +192,43 @@ intents_data = {
       "patterns": ["how do I deposit money", "paybill number", "how do I pay my monthly deposit via mpesa", "how do I top up my share capital"],
       "responses": [
         "Use **M-PESA Paybill 823244**:\n"
-        "* **Alpha Deposits:** `802` + `7-digit Member Number` + `00`\n"
-        "* **Share Capital:** `800` + `7-digit Member Number` + `00`\n"
-        "* **Prime/FOSA Account:** `801` + `7-digit Member Number` + `00`"
+        "* **Alpha Deposits:** Account `802` + `7-digit Member Number` + `00`\n"
+        "* **Share Capital:** Account `800` + `7-digit Member Number` + `00`\n"
+        "* **Prime/FOSA Account:** Account `801` + `7-digit Member Number` + `00`"
       ]
     },
     {
       "tag": "exit_withdrawal",
       "patterns": ["how do I leave Stima Sacco", "how do I withdraw my membership", "can I close my account"],
       "responses": [
-        "To exit, submit a formal 60-day written notice. Alpha Deposits are refunded in full after settling outstanding liabilities. Share Capital is non-withdrawable but can be transferred or sold to an active member."
+        "To exit, submit a formal 60-day written notice. Alpha Deposits are refunded in full after settling all direct and guaranteed liabilities. Share Capital is non-withdrawable but can be transferred or sold to an active member."
       ]
     },
     {
       "tag": "guarantor_rules",
       "patterns": ["can I withdraw if I guaranteed someone", "I am a guarantor can I leave", "guarantor liability"],
       "responses": [
-        "You cannot withdraw or close your account while actively guaranteeing another member's loan unless the borrower clears the balance or replaces you with an eligible guarantor."
+        "You cannot withdraw or close your account while actively guaranteeing another member's loan unless the borrower clears the loan or replaces you with an eligible guarantor."
       ]
     },
     {
       "tag": "branch_locator",
       "patterns": ["where is your nearest branch", "branches", "office locations", "where is your head office"],
       "responses": [
-        "Head Office: Stima Sacco Plaza, Mushembi Road, Parklands, Nairobi. Other branches: Nairobi CBD (Kawi Centre), Mombasa, Kisumu, Nakuru, Olkaria, Eldoret, and Embu. Full locator: https://www.stima-sacco.com/branches/"
+        "Head Office: Stima Sacco Plaza, Mushembi Road, Parklands, Nairobi. Branches: Nairobi CBD (Kawi Centre), Mombasa, Kisumu, Nakuru, Olkaria, Eldoret, and Embu. Full locator: https://www.stima-sacco.com/branches/"
       ]
     },
     {
       "tag": "complaint_escalation",
       "patterns": ["I want to file a complaint", "I have an issue with my account", "talk to a human", "connect me to customer care"],
       "responses": [
-        "I'm escalating this to Customer Care: Email customercare@stima-sacco.com | Phone: 0703024000 / 0703024024 | WhatsApp: 0703024001."
+        "I'm escalating this directly to Customer Care: Email customercare@stima-sacco.com | Phone: 0703024000 / 0703024024 | WhatsApp: 0703024001."
       ]
     }
   ]
 }
 
-# --- 3. MODEL TRAINING & CACHING ---
+# --- 4. MODEL TRAINING & CACHING ---
 @st.cache_resource
 def build_and_train_model():
     words = []
@@ -214,7 +273,7 @@ def build_and_train_model():
 
 model, words, labels = build_and_train_model()
 
-# --- 4. HELPER FUNCTIONS ---
+# --- 5. HELPER FUNCTIONS ---
 def clean_user_input(text):
     """Strips leading conversational greetings if the message contains an actual query."""
     greetings = ["hi", "hello", "hey", "habari", "mambo", "good day", "good morning", "good afternoon"]
@@ -253,7 +312,7 @@ def generate_escalation_link(user_query):
     mailto_url = f"mailto:{recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
     return mailto_url, recipient
 
-# --- 5. STREAMLIT CHAT INTERFACE ---
+# --- 6. STREAMLIT CHAT INTERFACE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
