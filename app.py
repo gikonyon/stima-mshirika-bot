@@ -6,23 +6,42 @@ import nltk
 from nltk.stem import LancasterStemmer
 from sklearn.neural_network import MLPClassifier
 import streamlit as st
+from PIL import Image
 
-# --- 0. PAGE CONFIGURATION & LOGO PATH ---
+# --- 0. PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="Mshirika - Stima SACCO Assistant",
     page_icon="🤖",
     layout="centered"
 )
 
-# Set the path to your logo file
-LOGO_PATH = "assets/stima_logo.png"
+# --- 1. LOGO UPLOADER & DISPLAY LOGIC ---
+logo_image = None
+
+# Sidebar Logo Uploader Tool
+with st.sidebar:
+    st.header("⚙️ App Branding")
+    uploaded_logo = st.file_uploader(
+        "Upload Stima SACCO Logo", 
+        type=["png", "jpg", "jpeg"],
+        help="Upload the Stima SACCO logo image to brand the application."
+    )
+    
+    if uploaded_logo is not None:
+        logo_image = Image.open(uploaded_logo)
+        st.image(logo_image, use_column_width=True)
+        st.markdown("---")
+    elif os.path.exists("assets/stima_logo.png"):
+        logo_image = Image.open("assets/stima_logo.png")
+        st.image(logo_image, use_column_width=True)
+        st.markdown("---")
 
 # Header Layout with Stima SACCO Logo
 col_logo, col_title = st.columns([1, 3])
 
 with col_logo:
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_column_width=True)
+    if logo_image is not None:
+        st.image(logo_image, use_column_width=True)
     else:
         st.title("⚡ STIMA SACCO")
 
@@ -32,12 +51,8 @@ with col_title:
 
 st.markdown("---")
 
-# --- 1. SIDEBAR TOOLS (CALCULATOR ONLY) ---
+# --- 2. SIDEBAR TOOLS (CALCULATOR ONLY) ---
 with st.sidebar:
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_column_width=True)
-        st.markdown("---")
-    
     st.header("🛠️ Member Self-Service Tools")
 
 with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=True):
@@ -67,7 +82,7 @@ with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=True):
 st.sidebar.markdown("---")
 st.sidebar.info("💡 **Tip:** Ask the chat assistant any policy, loan requirement, or mobile banking questions!")
 
-# --- 2. CACHED NLTK ASSETS ---
+# --- 3. CACHED NLTK ASSETS ---
 @st.cache_resource
 def download_nltk_data():
     try:
@@ -79,7 +94,7 @@ def download_nltk_data():
 download_nltk_data()
 stemmer = LancasterStemmer()
 
-# --- 3. KNOWLEDGE BASE DATASET ---
+# --- 4. KNOWLEDGE BASE DATASET ---
 intents_data = {
   "intents": [
     {
@@ -236,7 +251,7 @@ intents_data = {
   ]
 }
 
-# --- 4. MODEL TRAINING & CACHING ---
+# --- 5. MODEL TRAINING & CACHING ---
 @st.cache_resource
 def build_and_train_model():
     words = []
@@ -280,7 +295,7 @@ def build_and_train_model():
 
 model, words, labels = build_and_train_model()
 
-# --- 5. HELPER FUNCTIONS ---
+# --- 6. HELPER FUNCTIONS ---
 def clean_user_input(text):
     """Strips leading conversational greetings if the message contains an actual query."""
     greetings = ["hi", "hello", "hey", "habari", "mambo", "good day", "good morning", "good afternoon"]
@@ -319,7 +334,7 @@ def generate_escalation_link(user_query):
     mailto_url = f"mailto:{recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
     return mailto_url, recipient
 
-# --- 6. STREAMLIT CHAT INTERFACE ---
+# --- 7. STREAMLIT CHAT INTERFACE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
