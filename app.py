@@ -1,3 +1,4 @@
+import os
 import random
 import urllib.parse
 import numpy as np
@@ -6,18 +7,37 @@ from nltk.stem import LancasterStemmer
 from sklearn.neural_network import MLPClassifier
 import streamlit as st
 
-# --- 0. PAGE CONFIGURATION ---
+# --- 0. PAGE CONFIGURATION & LOGO PATH ---
 st.set_page_config(
     page_title="Mshirika - Stima SACCO Assistant",
     page_icon="🤖",
     layout="centered"
 )
 
-st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
-st.caption("Your 24/7 assistant for Stima SACCO membership, loan tracking, dividend math, and mobile banking.")
+LOGO_PATH = "assets/stima_logo.png"
+
+# Header with Stima SACCO Logo
+col_logo, col_title = st.columns([1, 3])
+
+with col_logo:
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_column_width=True)
+    else:
+        st.title("⚡ STIMA SACCO")
+
+with col_title:
+    st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
+    st.caption("Your 24/7 assistant for Stima SACCO membership, loan tracking, dividend math, and mobile banking.")
+
+st.markdown("---")
 
 # --- 1. SIDEBAR TOOLS (CALCULATOR & STATUS TRACKER) ---
-st.sidebar.header("🛠️ Member Self-Service Tools")
+with st.sidebar:
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_column_width=True)
+        st.markdown("---")
+    
+    st.header("🛠️ Member Self-Service Tools")
 
 with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=False):
     st.write("Calculate estimated annual returns based on Stima SACCO benchmark rates.")
