@@ -28,20 +28,26 @@ with st.sidebar:
     )
     
     if uploaded_logo is not None:
-        logo_image = Image.open(uploaded_logo)
-        st.image(logo_image, use_column_width=True)
-        st.markdown("---")
+        try:
+            logo_image = Image.open(uploaded_logo)
+            st.image(logo_image, use_container_width=True)
+            st.markdown("---")
+        except Exception:
+            st.error("Invalid image file uploaded.")
     elif os.path.exists("assets/stima_logo.png"):
-        logo_image = Image.open("assets/stima_logo.png")
-        st.image(logo_image, use_column_width=True)
-        st.markdown("---")
+        try:
+            logo_image = Image.open("assets/stima_logo.png")
+            st.image(logo_image, use_container_width=True)
+            st.markdown("---")
+        except Exception:
+            logo_image = None
 
 # Header Layout with Stima SACCO Logo
 col_logo, col_title = st.columns([1, 3])
 
 with col_logo:
     if logo_image is not None:
-        st.image(logo_image, use_column_width=True)
+        st.image(logo_image, use_container_width=True)
     else:
         st.title("⚡ STIMA SACCO")
 
