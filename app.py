@@ -14,9 +14,10 @@ st.set_page_config(
     layout="centered"
 )
 
+# Set the path to your logo file
 LOGO_PATH = "assets/stima_logo.png"
 
-# Header with Stima SACCO Logo
+# Header Layout with Stima SACCO Logo
 col_logo, col_title = st.columns([1, 3])
 
 with col_logo:
@@ -27,11 +28,11 @@ with col_logo:
 
 with col_title:
     st.title("🤖 Mshirika - Stima SACCO Virtual Assistant")
-    st.caption("Your 24/7 assistant for Stima SACCO membership, loan tracking, dividend math, and mobile banking.")
+    st.caption("Your 24/7 assistant for Stima SACCO membership, loan policy guidelines, dividend estimates, and mobile banking.")
 
 st.markdown("---")
 
-# --- 1. SIDEBAR TOOLS (CALCULATOR & STATUS TRACKER) ---
+# --- 1. SIDEBAR TOOLS (CALCULATOR ONLY) ---
 with st.sidebar:
     if os.path.exists(LOGO_PATH):
         st.image(LOGO_PATH, use_column_width=True)
@@ -39,13 +40,13 @@ with st.sidebar:
     
     st.header("🛠️ Member Self-Service Tools")
 
-with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=False):
+with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=True):
     st.write("Calculate estimated annual returns based on Stima SACCO benchmark rates.")
     
     share_capital = st.number_input("Share Capital (KSh)", min_value=0.0, value=25000.0, step=1000.0)
     alpha_deposits = st.number_input("Alpha Deposits (KSh)", min_value=0.0, value=100000.0, step=5000.0)
     
-    # Standard benchmark averages (e.g., ~14% Share Capital Dividend, ~11% Alpha Rebates)
+    # Standard benchmark averages (~14% Share Capital Dividend, ~11% Alpha Rebates)
     div_rate = st.slider("Est. Share Capital Dividend Rate (%)", 0.0, 20.0, 14.0) / 100
     rebate_rate = st.slider("Est. Alpha Deposit Rebate Rate (%)", 0.0, 15.0, 11.0) / 100
     
@@ -62,19 +63,6 @@ with st.sidebar.expander("🧮 Dividend & Rebate Calculator", expanded=False):
         st.markdown(f"* **Gross Return:** KSh {gross_total:,.2f}")
         st.markdown(f"* **Withholding Tax (5%):** -KSh {w_tax:,.2f}")
         st.markdown(f"👉 **Net Payout:** **KSh {net_total:,.2f}**")
-
-with st.sidebar.expander("🔍 Instant Loan Status Lookup", expanded=False):
-    st.write("Check processing stage or current loan balance.")
-    member_no = st.text_input("Enter Member Number:", value="M-10294")
-    
-    if st.button("Check Status"):
-        # Simulated instant retrieval
-        st.success(f"Record found for Member: **{member_no}**")
-        st.markdown("**Active Product:** Super Development Loan")
-        st.markdown("**Processing Stage:** ✅ Approved (Disbursement in Progress)")
-        st.markdown("**Approved Amount:** KSh 450,000")
-        st.markdown("**Outstanding Balance:** KSh 120,400")
-        st.markdown("**Next Installment:** KSh 14,200 due on 15th")
 
 st.sidebar.markdown("---")
 st.sidebar.info("💡 **Tip:** Ask the chat assistant any policy, loan requirement, or mobile banking questions!")
@@ -285,7 +273,6 @@ def build_and_train_model():
     training = np.array(training)
     output = np.array(output)
 
-    # Neural Network (MLP) Classifier via Scikit-Learn
     model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=500, random_state=42)
     model.fit(training, output)
     
@@ -343,21 +330,17 @@ for message in st.session_state.messages:
 
 # Process new user input
 if prompt := st.chat_input("Ask about deposits, loans, dividends, USSD..."):
-    # Display user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Clean leading greetings from multi-word prompts
     cleaned_prompt = clean_user_input(prompt)
 
-    # Predict intent & probability on cleaned prompt
     probs = model.predict_proba(bag_of_words(cleaned_prompt, words))[0]
     max_idx = np.argmax(probs)
     tag = model.classes_[max_idx]
     confidence = probs[max_idx]
 
-    # Confidence threshold evaluation
     if confidence > 0.40 and tag not in ["complaint_escalation"]:
         for tg in intents_data["intents"]:
             if tg['tag'] == tag:
@@ -370,7 +353,6 @@ if prompt := st.chat_input("Ask about deposits, loans, dividends, USSD..."):
             f"👉 **[Click here to open pre-filled email]({mailto_link})**"
         )
 
-    # Display bot response
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
